@@ -22,6 +22,11 @@ author:
     organization: Google
     email: jyasskin@chromium.org
 
+normative:
+  CDDL: I-D.greevenbosch-appsawg-cbor-cddl
+
+informative:
+  ServiceWorkers: W3C.WD-service-workers-1-20161011
 
 --- abstract
 
@@ -47,7 +52,7 @@ there isn’t a direct connection to the server where the content
 originates. However, it's difficult to distribute and verify the
 authenticity of applications and content without a connection to the
 network. The W3C has addressed running applications offline with
-Service Workers ({{?service-workers-1}}), but not
+Service Workers ({{?ServiceWorkers}}), but not
 the problem of distribution.
 
 Use Cases    {#use-cases}
@@ -116,7 +121,7 @@ such as a manifest and an index to let consumers validate the resources and
 access them directly.
 
 The overall structure of the item is described by the following
-[CDDL](https://tools.ietf.org/html/draft-greevenbosch-appsawg-cbor-cddl):
+CDDL ({{!CDDL}})):
 
 ~~~~~ cddl
 webpackage = [
@@ -142,11 +147,11 @@ executables by appending a normal web package to the extractor executable.
 
 The defined section types are:
 
-* [`"indexed-content"`](#main-content): The only required section.
+* ["indexed-content"](#main-content): The only required section.
   Maps resource keys (URLs possibly extended with HTTP headers) to
   HTTP2 responses. The mapping uses byte offsets to allow random
   access to any resource.
-* [`"manifest"`](#manifest): Validates that resources came from the expected
+* ["manifest"](#manifest): Validates that resources came from the expected
   source. May refer to other manifests among the responses. If this section
   isn't provided, the resources are un-signed and can be loaded as untrusted
   data.
@@ -273,7 +278,7 @@ the
 vouching for the package and the date the package was created. It may contain
 more keys defined in https://www.w3.org/TR/appmanifest/.
 
-### Manifest signatures
+### Manifest signatures  {#signatures}
 
 The manifest is signed by a set of certificates, including at least one that is
 trusted to sign content from the
@@ -285,6 +290,7 @@ example that it was checked for malicious behavior by some authority.
 The signed sequence of bytes is the concatenation of the following byte strings.
 This matches the TLS1.3 format to avoid cross-protocol attacks when TLS
 certificates are used to sign manifests.
+
 1. A string that consists of octet 32 (0x20) repeated 64 times.
 1. A context string: the ASCII encoding of "Web Package Manifest".
 1. A single 0 byte which serves as a separator.
@@ -311,7 +317,7 @@ X.509 certificates to chain from the signing certificates, using the rules
 in [RFC5280](https://tools.ietf.org/html/rfc5280), to roots trusted by all
 expected consumers of the package.
 
-[Sub-packages](#sub-packages') manifests can contain their own certificates or
+[Sub-packages](#sub-packages)' manifests can contain their own certificates or
 can rely on certificates in their parent packages.
 
 Requirements on the
@@ -363,7 +369,7 @@ unless its author can guarantee the network won't change or reorder the headers.
 ### Sub-packages
 
 A sub-package is represented by a [manifest](#manifest) file in
-the [`"content"`](#main-content) section, which contains hashes of resources
+the ["content"](#main-content) section, which contains hashes of resources
 from another origin. The sub-package's resources are not otherwise distinguished
 from the rest of the resources in the package. Sub-packages can form an
 arbitrarily-deep tree.
@@ -409,31 +415,6 @@ package may need to explicitly list those sub-sub-packages' hashes in order to
 be completely constrained.
 
 
-Implementation Notes
-====================
-
-A STuPiD server implementation SHOULD delete stored data some
-time after it was stored. It is RECOMMENDED not to delete the
-data before five minutes have elapsed after it was stored.
-Different client protocols will have different reactions to
-data that have been deleted prematurely and cannot be
-retrieved by the notified peer; this may be as trivial as
-packet loss or it may cause a reliable byte-stream to fail
-({{impl}}).
-(TODO: It may be useful to provide some hints in the storing
-POST request.)
-
-STuPiD clients should aggregate data in order to minimize the
-number of requests to the STuPiD server per second.
-The specific aggregation method chosen depends on the data
-rate required (and the maximum chunk size), the latency
-requirements, and the application semantics.
-
-Clearly, it is up to the implementation to decide how the data
-chunks are actually stored.  A sufficiently silly STuPiD server
-implementation might for instance use a MySQL database.
-
-
 Security Considerations
 =======================
 
@@ -446,11 +427,11 @@ Packages with a valid signature need to be invalidated when either
 
 Because packages are intended to be used offline, it's impossible to
 inject a revocation check into the critical path of using the package,
-and even in online scenarios, such revocation checks don't actually
-work [citation]. Instead, package consumers must check for a
-sufficiently recent set of validation files, consisting of OCSP
-responses {{!RFC6960}} and signed package version constraints, for
-example within the last 7-30 days.
+and even in online scenarios, such
+[revocation checks don't actually work](https://www.imperialviolet.org/2012/02/05/crlsets.html).
+Instead, package consumers must check for a sufficiently recent set of
+validation files, consisting of OCSP responses {{!RFC6960}} and signed
+package version constraints, for example within the last 7-30 days.
 
 --- back
 
@@ -461,8 +442,9 @@ Examples  {#xmp}
 This appendix provides some examples of web packages.
 
 The packages are written in CBOR's extended diagnostic notation
-({{?draft-greevenbosch-appsawg-cbor-cddl-10}}, Appendix G), with the
+({{CDDL}}, Appendix G), with the
 extensions that:
+
 1. `hpack({key:value,...})` is an HPACK ({{?RFC7541}}) encoding of the
    described headers.
 2. `DER(...)` is the DER encoding of a certificate described partially by the
