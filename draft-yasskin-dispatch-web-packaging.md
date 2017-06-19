@@ -2,45 +2,42 @@
 coding: utf-8
 
 title: Web Packaging
-abbrev: web-packaging
 docname: draft-yasskin-dispatch-web-packaging-latest
-date: 2017-06-15
 category: std
 
 ipr: trust200902
-area: General
+area: gen
 workgroup: Dispatch
 keyword: Internet-Draft
 
 stand_alone: yes
-pi: [toc, sortrefs, symrefs]
+pi: [comments, sortrefs, strict, symrefs, toc]
 
 author:
  -
-    ins: J. Yasskin
     name: Jeffrey Yasskin
     organization: Google
     email: jyasskin@chromium.org
 
 normative:
+  CBOR: RFC7049
   CDDL: I-D.greevenbosch-appsawg-cbor-cddl
+  appmanifest: W3C.WD-appmanifest-20170608
+  HTML:
+    target: https://html.spec.whatwg.org/multipage/
+    title: HTML
+    author:
+      org: WHATWG
 
 informative:
   ServiceWorkers: W3C.WD-service-workers-1-20161011
+  SRI: W3C.REC-SRI-20160623
 
 --- abstract
 
-NAT (Network Address Translator) Traversal may require TURN
-(Traversal Using Relays around NAT) functionality in certain
-cases that are not unlikely to occur.  There is little
-incentive to deploy TURN servers, except by those who need
-them — who may not be in a position to deploy a new protocol
-on an Internet-connected node, in particular not one with
-deployment requirements as high as those of TURN.
-
-"STUN/TURN using PHP in Despair" is a highly deployable
-protocol for obtaining TURN-like functionality, while also
-providing the most important function of STUN.
+Web Packages provide a way to bundle up groups of web resources to
+transmit them together. These bundles can then be signed to establish
+their authenticity.
 
 --- middle
 
@@ -52,7 +49,7 @@ there isn’t a direct connection to the server where the content
 originates. However, it's difficult to distribute and verify the
 authenticity of applications and content without a connection to the
 network. The W3C has addressed running applications offline with
-Service Workers ({{?ServiceWorkers}}), but not
+Service Workers ({{ServiceWorkers}}), but not
 the problem of distribution.
 
 Use Cases    {#use-cases}
@@ -114,14 +111,14 @@ generators and parsers.
 
 ## Top-level structure
 
-The package is a [CBOR-encoded data item](https://tools.ietf.org/html/rfc7049)
+The package is a CBOR-encoded data item ({{CBOR}})
 with MIME type `application/package+cbor`. It logically contains a flat sequence
 of resources represented as HTTP responses. The package also includes metadata
 such as a manifest and an index to let consumers validate the resources and
 access them directly.
 
 The overall structure of the item is described by the following
-CDDL ({{!CDDL}})):
+CDDL ({{CDDL}})):
 
 ~~~~~ cddl
 webpackage = [
@@ -186,8 +183,7 @@ http-headers = bstr
 
 A `uri` `resource-key` is equivalent to an `http-headers` block with ":method"
 set to "GET" and with ":scheme", ":authority", and ":path" headers set from the
-URI as described in
-[RFC7540 section 8.1.2.3](https://tools.ietf.org/html/rfc7540#section-8.1.2.3).
+URI as described in Section 8.1.2.3 of {{!RFC7540}}.
 
 As an optimization, the `resource-key`s in the index store relative instead of
 absolute URLs. Each entry is resolved relative to the resolved version of the
@@ -202,12 +198,12 @@ In addition to the CDDL constraints:
   chunks first. The definite lengths here may also help a package consumer to
   quickly send resources to other threads for parsing.
 * The index must not contain two resolved `resource-key`s with the
-  same [header list](http://httpwg.org/specs/rfc7541.html#rfc.section.1.3) after
-  HPACK decoding.
+  same [header list](http://httpwg.org/specs/rfc7541.html#rfc.section.1.3)
+  {{!RFC7541}} after HPACK decoding.
 * The `resource-key` must not contain any headers that aren't either ":method",
   ":scheme", ":authority", ":path", or listed in the
   `response-headers`'
-  ["Vary" header](https://tools.ietf.org/html/rfc7231#section-7.1.4).
+  ["Vary" header](https://tools.ietf.org/html/rfc7231#section-7.1.4) {{!RFC7231}}.
 * The `resource-key` must contain at most one of each ":method", ":scheme",
   ":authority", ":path" header, in that order, before any other headers.
   Resolving the `resource-key` fills in any missing pseudo-headers from that
@@ -215,8 +211,8 @@ In addition to the CDDL constraints:
 
 The optional `length` field in the index entries is redundant with the length
 prefixes on the `response-headers` and `body` in the content, but it can be used
-to issue [Range requests](https://tools.ietf.org/html/rfc7233) for responses
-that appear late in the `content`.
+to issue Range requests {{?RFC7233}} for responses that appear late in the
+`content`.
 
 
 ## Manifest
@@ -274,16 +270,16 @@ signature = {
 
 The metadata must include an absolute URL identifying
 the
-[origin](https://html.spec.whatwg.org/multipage/browsers.html#concept-origin)
+[origin](https://html.spec.whatwg.org/multipage/browsers.html#concept-origin) {{HTML}}
 vouching for the package and the date the package was created. It may contain
-more keys defined in https://www.w3.org/TR/appmanifest/.
+more keys defined in {{appmanifest}}.
 
 ### Manifest signatures  {#signatures}
 
 The manifest is signed by a set of certificates, including at least one that is
 trusted to sign content from the
 manifest's
-[origin](https://html.spec.whatwg.org/multipage/browsers.html#concept-origin).
+[origin](https://html.spec.whatwg.org/multipage/browsers.html#concept-origin) {{HTML}}.
 Other certificates can sign to vouch for the package along other dimensions, for
 example that it was checked for malicious behavior by some authority.
 
@@ -301,9 +297,10 @@ generate it. This certificate in turn identifies a signing algorithm in its
 SubjectPublicKeyInfo. The signature does not separately encode the signing
 algorithm to avoid letting attackers choose a weaker signature algorithm.
 
-Further, the signing algorithm must be one of the SignatureScheme algorithms defined
-by [TLS1.3](https://tlswg.github.io/tls13-spec/#rfc.section.4.2.3), except for
-`rsa_pkcs1*` and the ones marked "SHOULD NOT be offered".
+Further, the signing algorithm must be one of the SignatureScheme algorithms
+defined by
+[TLS1.3](https://tlswg.github.io/tls13-spec/draft-ietf-tls-tls13.html#signature-algorithms)
+{{!I-D.ietf-tls-tls13}}, except for `rsa_pkcs1*` and the ones marked "SHOULD NOT be offered".
 
 As a special case, if the package is being transferred from the manifest's
 origin under TLS, the UA may load it without checking that its own resources match
@@ -312,17 +309,16 @@ the manifest. The UA still needs to validate resources provided by sub-manifests
 
 ### Certificates
 
-The `signed-manifest.certificates` array should contain enough
-X.509 certificates to chain from the signing certificates, using the rules
-in [RFC5280](https://tools.ietf.org/html/rfc5280), to roots trusted by all
-expected consumers of the package.
+The `signed-manifest.certificates` array should contain enough X.509
+certificates to chain from the signing certificates, using the rules in
+{{!RFC5280}}, to roots trusted by all expected consumers of the package.
 
 [Sub-packages](#sub-packages)' manifests can contain their own certificates or
 can rely on certificates in their parent packages.
 
 Requirements on the
 certificates' [Key Usage](https://tools.ietf.org/html/rfc5280#section-4.2.1.3)
-and [Extended Key Usage](https://tools.ietf.org/html/rfc5280#section-4.2.1.12)
+and [Extended Key Usage](https://tools.ietf.org/html/rfc5280#section-4.2.1.12) ({{?RFC5280}})
 are TBD. It may or may not be important to prevent TLS serving certificates from
 being used to sign packages, in order to prevent cross-protocol attacks.
 
@@ -331,9 +327,8 @@ being used to sign packages, in order to prevent cross-protocol attacks.
 
 For a resource to be valid, then for each `hash-algorithm => [hash-value]` in
 `resource-hashes`, the resource's hash using that algorithm needs to appear in
-that list of `hash-value`s. Like
-in [Subresource Integrity](https://www.w3.org/TR/SRI/#agility), the UA will only
-check one of these, but it's up to the UA which one.
+that list of `hash-value`s. Like in {{SRI}}, the UA will only check one of
+these, but it's up to the UA which one.
 
 The hash of a resource is the hash of its Canonical CBOR encoding using the
 following CDDL. Headers are decompressed before being encoded and hashed.
@@ -360,7 +355,7 @@ resource = [
 header-name = bstr .regexp "[\x21-\x39\x3b-\x40\x5b-\x7e]+"
 ~~~~~
 
-This differs from [SRI](https://w3c.github.io/webappsec-subresource-integrity),
+This differs from {{SRI}},
 which only hashes the body. Note: This will usually prevent a package from
 relying on some of its contents being transferred as normal network responses,
 unless its author can guarantee the network won't change or reorder the headers.
@@ -421,6 +416,7 @@ Security Considerations
 Signature validation is difficult.
 
 Packages with a valid signature need to be invalidated when either
+
 * the private key for any certificate in the signature's validation
   chain is leaked, or
 * a vulnerability is discovered in the package's contents.
@@ -442,15 +438,14 @@ Examples  {#xmp}
 This appendix provides some examples of web packages.
 
 The packages are written in CBOR's extended diagnostic notation
-({{CDDL}}, Appendix G), with the
-extensions that:
+(Appendix G of {{CDDL}}), with the extensions that:
 
 1. `hpack({key:value,...})` is an HPACK ({{?RFC7541}}) encoding of the
    described headers.
 2. `DER(...)` is the DER encoding of a certificate described partially by the
    contents of the `...`.
 
-All examples are available in the [examples](examples) directory.
+All examples are available at [https://github.com/WICG/webpackage/tree/master/examples](https://github.com/WICG/webpackage/tree/master/examples).
 
 ## Single site: a couple of web pages with resources in a package.
 The example web site contains two HTML pages and an image. This is straightforward case, demonstrating the following:
@@ -462,7 +457,7 @@ The example web site contains two HTML pages and an image. This is straightforwa
    the start of the `responses` item.
 3. Each resource contains `date`/`expires` headers that specify when the
    resource can be used by UA, similar to HTTP 1.1
-   [Expiration Model](https://www.w3.org/Protocols/rfc2616/rfc2616-sec13.html#sec13.2).
+   [Expiration Model](https://www.w3.org/Protocols/rfc2616/rfc2616-sec13.html#sec13.2) {{?RFC2616}}.
    The actual expiration model is TBD and to be reflected in the spec. Note that
    we haven't yet described a way to set an `expires` value for the whole
    package at once.
@@ -535,7 +530,7 @@ The example web site contains an HTML page and pulls a script from the
 well-known location (different origin). Note that there's no need to distinguish
 the resources from other origins vs the ones from the main origin. Since none of
 them are signed, the browser won't treat any as
-[same-origin](https://html.spec.whatwg.org/multipage/browsers.html#same-origin)
+[same-origin](https://html.spec.whatwg.org/multipage/browsers.html#same-origin) {{HTML}}
 with their claimed origin.
 
 ~~~~~ cbor-diag
@@ -600,20 +595,18 @@ Some interesting things to notice in this package:
    certificate.
 3. The elements of `"certificates"` are
    DER-encoded [X.509 certificates](https://tools.ietf.org/html/rfc5280).
-   The [signing certificate](go/webpack/testdata/pki/example.com.cert) is
+   The [signing certificate](https://github.com/WICG/webpackage/blob/master/go/webpack/testdata/pki/example.com.cert) is
    trusted for `example.com`, and that certificate chains,
-   using [other elements](go/webpack/testdata/pki/intermediate1.cert) of
+   using [other elements](https://github.com/WICG/webpackage/blob/master/go/webpack/testdata/pki/intermediate1.cert) of
    `"certificates"`, to
-   a [trusted root certificate](go/webpack/testdata/pki/root1.cert). The chain
+   a [trusted root certificate](https://github.com/WICG/webpackage/blob/master/go/webpack/testdata/pki/root1.cert). The chain
    is built and trusted in the same way as TLS chains during normal web
    browsing.
 4. The signature algorithm is determined by the signing certificate's public key
    type, `prime256v1`, and isn't encoded separately in the signature block.
 5. The manifest contains a `"resource-hashes"` block, which contains the hashes,
    using the SHA384 algorithm in this case, of all resources in the package.
-   Unlike in
-   [Subresource Integrity](https://w3c.github.io/webappsec-subresource-integrity/),
-   the hashes include the request and response headers.
+   Unlike in {{SRI}}, the hashes include the request and response headers.
 6. The inclusion of a certificate chain makes it possible to validate the
    package offline. Browsers detect revoked certificates and packages with known
    vulnerabilities by looking for separately signed files containing OCSP and
